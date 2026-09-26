@@ -65,6 +65,11 @@ vi.mock("@/server/lib/dataforseo/labs", () => ({
   fetchKeywordOverview: vi.fn(),
   fetchSerpCompetitors: vi.fn(),
 }));
+vi.mock("@/server/lib/dataforseo/labsWorldwide", () => ({
+  fetchDomainRankOverviewByCountry: vi.fn(),
+  fetchHistoricalBulkTraffic: vi.fn(),
+  fetchHistoricalRankOverview: vi.fn(),
+}));
 vi.mock("@/server/lib/dataforseo/serp", () => ({
   fetchLiveSerp: vi.fn(),
   fetchRankCheckSerp: vi.fn(),
@@ -417,6 +422,24 @@ describe("mapDataforseoPathToCreditFeature", () => {
         "dataforseo_labs",
         "google",
         "relevant_pages",
+        "live",
+      ]),
+    ).toBe("domain_overview");
+    expect(
+      mapDataforseoPathToCreditFeature([
+        "v3",
+        "dataforseo_labs",
+        "google",
+        "historical_rank_overview",
+        "live",
+      ]),
+    ).toBe("domain_overview");
+    expect(
+      mapDataforseoPathToCreditFeature([
+        "v3",
+        "dataforseo_labs",
+        "google",
+        "historical_bulk_traffic_estimation",
         "live",
       ]),
     ).toBe("domain_overview");

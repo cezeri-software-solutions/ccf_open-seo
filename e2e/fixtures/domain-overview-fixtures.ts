@@ -16,6 +16,42 @@ export function getFixtureOverview(domain: string) {
   };
 }
 
+export function getFixtureWorldwideOverview(domain: string) {
+  const overview = getFixtureOverview(domain);
+  return {
+    ...overview,
+    organicTraffic: 500,
+    organicKeywords: 40,
+    countries: [
+      { locationCode: 2040, organicTraffic: 373, organicKeywords: 30 },
+      { locationCode: 2276, organicTraffic: 127, organicKeywords: 10 },
+    ],
+  };
+}
+
+export function getFixtureDomainHistory() {
+  const months = [
+    [2025, 10, 280, 240],
+    [2025, 11, 310, 255],
+    [2025, 12, 290, 248],
+    [2026, 1, 340, 270],
+    [2026, 2, 360, 281],
+    [2026, 3, 355, 276],
+    [2026, 4, 390, 290],
+    [2026, 5, 373, 307],
+  ] as const;
+  return {
+    domain: "primary.example.com",
+    months: months.map(([year, month, organicTraffic, organicKeywords]) => ({
+      year,
+      month,
+      organicTraffic,
+      organicKeywords,
+    })),
+    fetchedAt: "2026-05-19T00:00:00.000Z",
+  };
+}
+
 export function getFixturePagesPage(data: {
   domain: string;
   page: number;

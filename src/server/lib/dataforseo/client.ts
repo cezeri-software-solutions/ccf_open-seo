@@ -38,6 +38,11 @@ import {
   fetchSerpCompetitors,
 } from "@/server/lib/dataforseo/labs";
 import {
+  fetchDomainRankOverviewByCountry,
+  fetchHistoricalBulkTraffic,
+  fetchHistoricalRankOverview,
+} from "@/server/lib/dataforseo/labsWorldwide";
+import {
   fetchAdsKeywordIdeas,
   fetchAdsSearchVolume,
 } from "@/server/lib/dataforseo/google-ads";
@@ -115,6 +120,9 @@ export function createDataforseoClient(customer: BillingCustomerContext) {
     },
     domain: {
       rankOverview: meter(customer, fetchDomainRankOverview),
+      rankOverviewByCountry: meter(customer, fetchDomainRankOverviewByCountry),
+      historicalBulkTraffic: meter(customer, fetchHistoricalBulkTraffic),
+      historicalRankOverview: meter(customer, fetchHistoricalRankOverview),
       rankedKeywords: meter(customer, fetchRankedKeywords),
       relevantPages: meter(customer, fetchRelevantPages),
     },
