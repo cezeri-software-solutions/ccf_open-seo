@@ -48,6 +48,52 @@ export const domainOverviewSchema = z.object({
   scope: researchScopeSchema.optional(),
   locationCode: z.number().int().positive().optional(),
   languageCode: z.string().min(2).max(8).optional(),
+  /** Omit the country and return organic traffic for every country. */
+  worldwide: z.boolean().optional(),
+});
+
+/** One to six years. Six years reaches October 2020, the earliest month. */
+export const DOMAIN_HISTORY_SPANS = [12, 24, 36, 48, 60, 72] as const;
+export type DomainHistorySpan = (typeof DOMAIN_HISTORY_SPANS)[number];
+
+export function isDomainHistorySpan(value: number): value is DomainHistorySpan {
+  return DOMAIN_HISTORY_SPANS.some((span) => span === value);
+}
+
+export function domainHistoryRangeLabel(months: DomainHistorySpan): string {
+  const years = months / 12;
+  return years === 1 ? "1 Jahr" : `${years} Jahre`;
+}
+
+/** Raw DataForSEO price for one country: $0.12 plus $0.0012 per returned month. */
+export function domainHistoryCostUsd(months: DomainHistorySpan): number {
+  return Math.round((0.12 + months * 0.0012) * 10_000) / 10_000;
+}
+
+/** Worldwide history is one bulk request, independent of the window length. */
+export const WORLDWIDE_HISTORY_COST_USD = 0.1212;
+
+export function domainHistoryOptionLabel(
+  months: DomainHistorySpan,
+  worldwide = false,
+): string {
+  const cost = worldwide
+    ? WORLDWIDE_HISTORY_COST_USD
+    : domainHistoryCostUsd(months);
+  return `${domainHistoryRangeLabel(months)} / $${cost.toFixed(4)}`;
+}
+
+export const domainHistorySchema = domainOverviewSchema.extend({
+  months: z
+    .union([
+      z.literal(12),
+      z.literal(24),
+      z.literal(36),
+      z.literal(48),
+      z.literal(60),
+      z.literal(72),
+    ])
+    .default(12),
 });
 
 /* ------------------------------------------------------------------ */
@@ -164,6 +210,7 @@ export const domainSearchSchema = z.object({
   order: z.enum(domainSortOrders).optional(),
   tab: z.enum(domainTabs).optional(),
   loc: optionalSearchPositiveIntParam,
+  worldwide: booleanSearchParamSchema.optional(),
   page: optionalSearchPositiveIntParam,
   size: z.coerce
     .number()
@@ -194,3 +241,6 @@ export const domainSearchSchema = z.object({
 });
 
 export type DomainSearchParams = z.infer<typeof domainSearchSchema>;
+
+/** Sentinel for the Domain Overview country picker. Not a DataForSEO location. */
+export const WORLDWIDE_LOCATION_CODE = 0;

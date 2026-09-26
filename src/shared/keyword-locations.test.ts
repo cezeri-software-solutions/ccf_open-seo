@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   LABS_LOCATION_OPTIONS,
   LOCATION_OPTIONS,
+  countryFlagEmoji,
   formatLocationLabel,
   getIsoCountryCode,
   getKeywordDataProvider,
@@ -16,6 +17,12 @@ import {
 } from "./keyword-locations";
 
 describe("keyword locations", () => {
+  it("maps the UK display label to the GB flag", () => {
+    expect(countryFlagEmoji("AT")).toBe("🇦🇹");
+    expect(countryFlagEmoji("UK")).toBe("🇬🇧");
+    expect(countryFlagEmoji("WW")).toBe("🌐");
+  });
+
   it("routes Labs-supported countries to labs", () => {
     expect(getKeywordDataProvider(2840)).toBe("labs"); // US
     expect(getKeywordDataProvider(2826)).toBe("labs"); // UK

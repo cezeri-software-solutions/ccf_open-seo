@@ -9,6 +9,11 @@ import { joinClauses } from "@/server/lib/dataforseo/filters";
 import { parseResearchTargetOrThrow } from "@/server/lib/domainUtils";
 import type { ResearchScope } from "@/shared/researchScope";
 import { mapKeywordItem } from "@/server/features/domain/services/domainKeywordMapper";
+import { getHistory } from "@/server/features/domain/services/domainHistory";
+import {
+  aggregateDomainCountries,
+  type DomainCountryTraffic,
+} from "@/server/features/domain/services/domainWorldwide";
 import { getKeywordsPage } from "@/server/features/domain/services/domainKeywordsPage";
 import { getPagesPage } from "@/server/features/domain/services/domainPagesPage";
 
@@ -119,6 +124,92 @@ async function getOverview(
   return { ...stored, scope: target.scope, displayTarget: target.display };
 }
 
+const worldwideOverviewResultSchema = z.object({
+  domain: z.string(),
+  organicTraffic: z.number().nullable(),
+  organicKeywords: z.number().nullable(),
+  countries: z.array(
+    z.object({
+      locationCode: z.number().int(),
+      organicTraffic: z.number(),
+      organicKeywords: z.number(),
+    }),
+  ),
+  hasData: z.boolean(),
+  fetchedAt: z.string(),
+});
+
+export type WorldwideOverviewResult = z.infer<
+  typeof worldwideOverviewResultSchema
+> & {
+  scope: ResearchScope;
+  displayTarget: string;
+  countries: DomainCountryTraffic[];
+};
+
+async function getWorldwideOverview(
+  input: {
+    projectId: string;
+    domain: string;
+    scope?: ResearchScope;
+  },
+  billingCustomer: BillingCustomerContext,
+  metering: MeteringOverrides = {},
+): Promise<WorldwideOverviewResult> {
+  const target = parseResearchTargetOrThrow(input.domain, input.scope);
+  const domain = target.hostname;
+  const cacheKey = await buildCacheKey("domain:overview-countries", {
+    organizationId: billingCustomer.organizationId,
+    projectId: input.projectId,
+    domain,
+  });
+
+  const cachedRaw = await getCached(cacheKey);
+  const cached = worldwideOverviewResultSchema.safeParse(cachedRaw);
+  if (cached.success && cached.data.hasData) {
+    return {
+      ...cached.data,
+      scope: target.scope,
+      displayTarget: target.display,
+    };
+  }
+
+  const dataforseo = createDataforseoClient(billingCustomer);
+  const items = await dataforseo.domain.rankOverviewByCountry({
+    target: domain,
+    ...metering,
+  });
+  const countries = aggregateDomainCountries(items);
+  const organicTraffic = countries.reduce(
+    (sum, country) => sum + country.organicTraffic,
+    0,
+  );
+  const organicKeywords = countries.reduce(
+    (sum, country) => sum + country.organicKeywords,
+    0,
+  );
+  const stored: z.infer<typeof worldwideOverviewResultSchema> = {
+    domain,
+    organicTraffic,
+    organicKeywords,
+    countries,
+    hasData: organicKeywords > 0,
+    fetchedAt: new Date().toISOString(),
+  };
+
+  if (stored.hasData) {
+    waitUntil(
+      setCached(cacheKey, stored, DOMAIN_OVERVIEW_TTL_SECONDS).catch(
+        (error) => {
+          console.error("domain.overview-countries.cache-write failed:", error);
+        },
+      ),
+    );
+  }
+
+  return { ...stored, scope: target.scope, displayTarget: target.display };
+}
+
 async function getSuggestedKeywords(
   input: {
     domain: string;
@@ -218,6 +309,8 @@ async function getSuggestedKeywords(
 
 export const DomainService = {
   getOverview,
+  getWorldwideOverview,
+  getHistory,
   getSuggestedKeywords,
   getKeywordsPage,
   getPagesPage,

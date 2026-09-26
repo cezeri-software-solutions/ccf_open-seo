@@ -1,5 +1,6 @@
 import {
   DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE,
+  WORLDWIDE_LOCATION_CODE,
   type DomainSearchParams,
 } from "@/types/schemas/domain";
 import {
@@ -41,6 +42,8 @@ export type DomainOverviewRouteState = {
   tab: DomainActiveTab;
   defaultLocationCode: number;
   locationCode: number;
+  /** True when the country picker is Worldwide. */
+  worldwide: boolean;
   sentLocationCode: number | undefined;
   page: number;
   pageSize: number;
@@ -76,9 +79,9 @@ export function getDomainRouteState(
     projectMarket && isLabsLocationCode(projectMarket.locationCode)
       ? projectMarket.locationCode
       : DEFAULT_LOCATION_CODE;
-  // Domain analytics is Labs-backed; Google-Ads-only countries aren't valid.
+  const worldwide = search.worldwide === true;
   const normalizedLocationCode =
-    search.loc != null && isLabsLocationCode(search.loc)
+    !worldwide && search.loc != null && isLabsLocationCode(search.loc)
       ? search.loc
       : defaultLocationCode;
 
@@ -89,8 +92,9 @@ export function getDomainRouteState(
     order: resolveSortOrder(normalizedSort, toSortOrder(search.order ?? null)),
     tab: search.tab ?? "keywords",
     defaultLocationCode,
-    locationCode: normalizedLocationCode,
-    sentLocationCode: search.loc,
+    locationCode: worldwide ? WORLDWIDE_LOCATION_CODE : normalizedLocationCode,
+    worldwide,
+    sentLocationCode: worldwide ? undefined : search.loc,
     page: search.page != null && search.page > 0 ? search.page : 1,
     pageSize: search.size ?? DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE,
     appliedFilters: {

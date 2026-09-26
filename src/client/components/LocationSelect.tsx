@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Search } from "lucide-react";
+import { CountryFlag } from "@/client/components/CountryFlag";
 import { LOCATION_OPTIONS } from "@/shared/keyword-locations";
 
 type LocationOption = (typeof LOCATION_OPTIONS)[number];
@@ -112,7 +113,12 @@ export function LocationSelect({
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="truncate">{selected?.label ?? "Select country"}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {selected ? <CountryFlag shortLabel={selected.shortLabel} /> : null}
+          <span className="truncate">
+            {selected?.label ?? "Select country"}
+          </span>
+        </span>
       </button>
 
       {open ? (
@@ -157,7 +163,10 @@ export function LocationSelect({
                       onClick={() => select(option)}
                       onMouseEnter={() => setActiveIndex(index)}
                     >
-                      <span className="flex-1 truncate">{option.label}</span>
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
+                        <CountryFlag shortLabel={option.shortLabel} />
+                        <span className="truncate">{option.label}</span>
+                      </span>
                       {isSelected ? (
                         <Check className="size-4 shrink-0 text-primary" />
                       ) : null}

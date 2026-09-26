@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDomainOverview } from "@/serverFunctions/domain";
+import { getDomainHistory } from "@/serverFunctions/domain";
+import type { DomainHistorySpan } from "@/types/schemas/domain";
 import type { ResearchScope } from "@/shared/researchScope";
 
 type Input = {
@@ -7,28 +8,33 @@ type Input = {
   domain: string;
   scope: ResearchScope;
   locationCode: number | undefined;
+  months: DomainHistorySpan;
   worldwide?: boolean;
+  /** False until the user opens the history panel, so the billed call waits. */
+  enabled: boolean;
 };
 
-export function useDomainOverviewQuery(input: Input) {
+export function useDomainHistoryQuery(input: Input) {
   const trimmedDomain = input.domain.trim();
 
   return useQuery({
-    enabled: trimmedDomain !== "",
+    enabled: input.enabled && trimmedDomain !== "",
     queryKey: [
-      "domain-overview",
+      "domain-history",
       input.projectId,
       trimmedDomain,
       input.scope,
       input.worldwide ? "worldwide" : input.locationCode,
+      input.months,
     ],
     queryFn: () =>
-      getDomainOverview({
+      getDomainHistory({
         data: {
           projectId: input.projectId,
           domain: trimmedDomain,
           scope: input.scope,
           locationCode: input.worldwide ? undefined : input.locationCode,
+          months: input.months,
           worldwide: input.worldwide || undefined,
         },
       }),

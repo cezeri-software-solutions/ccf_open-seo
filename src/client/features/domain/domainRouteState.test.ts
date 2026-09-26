@@ -81,4 +81,14 @@ describe("getDomainRouteState", () => {
     expect(state.locationCode).toBe(2704);
     expect(state.sentLocationCode).toBe(2352);
   });
+
+  it("treats worldwide as its own location", () => {
+    const state = getDomainRouteState(
+      { domain: "example.com", worldwide: true, loc: 2040 },
+      { locationCode: 2040, languageCode: "de" },
+    );
+    expect(state.worldwide).toBe(true);
+    expect(state.locationCode).toBe(0);
+    expect(state.sentLocationCode).toBeUndefined();
+  });
 });
