@@ -52,6 +52,16 @@ export function getIsoCountryCode(locationCode: number): string {
   return (ISO_COUNTRY_OVERRIDES[shortLabel] ?? shortLabel).toLowerCase();
 }
 
+/** Flag emoji for a picker short label. `WW` is the worldwide option. */
+export function countryFlagEmoji(shortLabel: string): string {
+  if (shortLabel === "WW") return "🌐";
+  const iso = (ISO_COUNTRY_OVERRIDES[shortLabel] ?? shortLabel).toUpperCase();
+  if (!/^[A-Z]{2}$/.test(iso)) return "";
+  return String.fromCodePoint(
+    ...iso.split("").map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65),
+  );
+}
+
 type KeywordDataProvider = "labs" | "google_ads";
 
 type LocationOption = {
