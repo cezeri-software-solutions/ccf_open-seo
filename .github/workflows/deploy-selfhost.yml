@@ -1,0 +1,55 @@
+name: Deploy self-host
+
+# Deploys this repository's OpenSEO install to its Cloudflare account.
+# Push to main only. Pull requests do not deploy, so forked code never
+# runs with these secrets.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+# ENV_SELFHOST (full .env.selfhost contents).
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-selfhost
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    if: github.repository == 'cezeri-software-solutions/ccf_open-seo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write .env.selfhost
+        run: printf '%s\n' "$ENV_SELFHOST" > .env.selfhost
+        env:
+          ENV_SELFHOST: ${{ secrets.ENV_SELFHOST }}
+
+      - name: Deploy
+        run: pnpm deploy:selfhost --yes
