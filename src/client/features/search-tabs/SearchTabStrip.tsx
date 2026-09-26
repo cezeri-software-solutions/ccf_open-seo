@@ -194,7 +194,7 @@ function getSearchTabQueryConfig(
         projectId,
         trimmedDomain,
         input.scope,
-        input.locationCode,
+        input.worldwide ? "worldwide" : input.locationCode,
       ],
       queryFn: () =>
         getDomainOverview({
@@ -202,7 +202,8 @@ function getSearchTabQueryConfig(
             projectId,
             domain: trimmedDomain,
             scope: input.scope,
-            locationCode: input.locationCode,
+            locationCode: input.worldwide ? undefined : input.locationCode,
+            worldwide: input.worldwide || undefined,
           },
         }),
       staleTime: 5 * 60_000,

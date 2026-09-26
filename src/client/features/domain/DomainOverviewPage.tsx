@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE,
+  WORLDWIDE_LOCATION_CODE,
   type DomainSearchParams,
 } from "@/types/schemas/domain";
 import {
@@ -18,6 +19,8 @@ import {
   getDomainSearchValidationErrors,
 } from "@/client/features/domain/domainSearchValidation";
 import { useDomainOverviewQuery } from "@/client/features/domain/hooks/useDomainOverviewQuery";
+import { DomainCountryTraffic } from "@/client/features/domain/components/DomainCountryTraffic";
+import { DomainMonthlyTrend } from "@/client/features/domain/components/DomainMonthlyTrend";
 import { DomainOverviewLoadingState } from "@/client/features/domain/components/DomainOverviewLoadingState";
 import { DomainHistorySection } from "@/client/features/domain/components/DomainHistorySection";
 import { DomainSearchCard } from "@/client/features/domain/components/DomainSearchCard";
@@ -85,13 +88,17 @@ function getSortSearchUpdate(
   };
 }
 
-function getLocationSearchUpdate(
+function locationSearchUpdate(
   nextLocationCode: number,
   defaultLocationCode: number,
-): DomainSearchUpdate {
+): Pick<DomainSearchUpdate, "loc" | "worldwide" | "page"> {
+  if (nextLocationCode === WORLDWIDE_LOCATION_CODE) {
+    return { loc: undefined, worldwide: true, page: undefined };
+  }
   return {
     loc:
       nextLocationCode === defaultLocationCode ? undefined : nextLocationCode,
+    worldwide: undefined,
     page: undefined,
   };
 }
@@ -146,6 +153,7 @@ function getHistorySearchUpdate(
     order: undefined,
     tab: item.tab === "keywords" ? undefined : item.tab,
     loc: historyLocation === defaultLocationCode ? undefined : historyLocation,
+    worldwide: undefined,
     size: undefined,
   };
 }
@@ -175,7 +183,7 @@ function getSearchSubmitUpdate({
     sort: toSortSearchParam(sort),
     order: toSortOrderSearchParam(sort, currentOrder),
     tab: activeTab === "keywords" ? undefined : activeTab,
-    loc: locationCode === defaultLocationCode ? undefined : locationCode,
+    ...locationSearchUpdate(locationCode, defaultLocationCode),
     size: undefined,
   };
 }
@@ -221,7 +229,7 @@ function useDomainOverviewState({
   const applyLocationChange = useCallback(
     (nextLocationCode: number) => {
       setSearchParams(
-        getLocationSearchUpdate(
+        locationSearchUpdate(
           nextLocationCode,
           routeState.defaultLocationCode,
         ),
@@ -278,6 +286,7 @@ function useDomainOverviewState({
     domain: routeState.domain,
     scope: routeState.scope,
     locationCode: routeState.sentLocationCode,
+    worldwide: routeState.worldwide,
   });
   const overview = overviewQuery.data ?? null;
   const isLoading = routeState.domain.trim() !== "" && overviewQuery.isLoading;
@@ -467,9 +476,17 @@ export function DomainOverviewPage({
       type: "domain",
       domain: routeState.domain,
       scope: routeState.scope,
-      locationCode: routeState.sentLocationCode,
+      locationCode: routeState.worldwide
+        ? undefined
+        : routeState.sentLocationCode,
+      worldwide: routeState.worldwide || undefined,
     };
-  }, [routeState.domain, routeState.scope, routeState.sentLocationCode]);
+  }, [
+    routeState.domain,
+    routeState.scope,
+    routeState.sentLocationCode,
+    routeState.worldwide,
+  ]);
 
   const navigateToSearchTab = useCallback(
     (input: SearchTabInput | null) => {
@@ -492,7 +509,8 @@ export function DomainOverviewPage({
           order: undefined,
           tab: undefined,
           page: undefined,
-          loc: input.locationCode,
+          loc: input.worldwide ? undefined : input.locationCode,
+          worldwide: input.worldwide ? true : undefined,
           size: undefined,
         }),
         replace: true,
@@ -507,6 +525,7 @@ export function DomainOverviewPage({
     getLabel: useCallback(
       (input) => {
         if (input.type !== "domain") return "";
+        if (input.worldwide) return `${input.domain} Worldwide`;
         const locationSuffix =
           input.locationCode == null ||
           input.locationCode === routeState.defaultLocationCode
@@ -521,10 +540,15 @@ export function DomainOverviewPage({
 
   // domain_rank_overview can't be narrowed: its metrics always cover the
   // hostname plus subdomains, so anything narrower needs a label.
-  const overviewMetricsHint =
-    state.overview && state.overview.scope !== "subdomains"
+  const overviewMetricsHint = routeState.worldwide
+    ? "All countries"
+    : state.overview && state.overview.scope !== "subdomains"
       ? "Whole domain incl. subdomains"
       : undefined;
+  const countryRows =
+    routeState.worldwide && state.overview && "countries" in state.overview
+      ? state.overview.countries
+      : null;
 
   const tabControls = routeState.domain ? (
     <div className="flex flex-col gap-2">
@@ -558,8 +582,8 @@ export function DomainOverviewPage({
         <div>
           <h1 className="text-2xl font-semibold">Domain Overview</h1>
           <p className="text-sm text-base-content/70">
-            Analyze any domain&apos;s SEO profile: traffic, keywords, and
-            backlinks.
+            Analyze any domain&apos;s SEO profile: traffic, keywords, and how
+            they changed over recent months.
           </p>
         </div>
 
@@ -621,6 +645,15 @@ export function DomainOverviewPage({
               />
             </div>
 
+            <DomainMonthlyTrend
+              projectId={projectId}
+              domain={routeState.domain}
+              scope={routeState.scope}
+              locationCode={routeState.sentLocationCode}
+              worldwide={routeState.worldwide}
+              hint={overviewMetricsHint}
+            />
+
             {!state.overview.hasData ? (
               <div className="alert alert-info">
                 <span>
@@ -630,59 +663,66 @@ export function DomainOverviewPage({
               </div>
             ) : null}
 
-            <div className="border border-base-300 rounded-xl bg-base-100 overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 border-b border-base-300">
-                <div role="tablist" className="tabs tabs-border w-fit">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={routeState.tab === "keywords"}
-                    className={`tab ${routeState.tab === "keywords" ? "tab-active" : ""}`}
-                    onClick={() => state.handleTabChange("keywords")}
-                  >
-                    Top Keywords
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={routeState.tab === "pages"}
-                    className={`tab ${routeState.tab === "pages" ? "tab-active" : ""}`}
-                    onClick={() => state.handleTabChange("pages")}
-                  >
-                    Top Pages
-                  </button>
+            {countryRows ? (
+              <DomainCountryTraffic
+                countries={countryRows}
+                onSelectCountry={state.applyLocationChange}
+              />
+            ) : (
+              <div className="border border-base-300 rounded-xl bg-base-100 overflow-hidden">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 border-b border-base-300">
+                  <div role="tablist" className="tabs tabs-border w-fit">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={routeState.tab === "keywords"}
+                      className={`tab ${routeState.tab === "keywords" ? "tab-active" : ""}`}
+                      onClick={() => state.handleTabChange("keywords")}
+                    >
+                      Top Keywords
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={routeState.tab === "pages"}
+                      className={`tab ${routeState.tab === "pages" ? "tab-active" : ""}`}
+                      onClick={() => state.handleTabChange("pages")}
+                    >
+                      Top Pages
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {routeState.tab === "keywords" ? (
-                <KeywordsTab
-                  key="keywords"
-                  projectId={projectId}
-                  target={state.overview.displayTarget}
-                  hostname={state.overview.domain}
-                  scope={state.overview.scope}
-                  routeState={routeState}
-                  canSaveKeywords={state.canSaveKeywords}
-                  setSearchParams={state.setSearchParams}
-                  onSortClick={state.handleSortColumnClick}
-                  onPageChange={state.goToPage}
-                  onPageSizeChange={state.setPageSize}
-                />
-              ) : (
-                <PagesTab
-                  key="pages"
-                  projectId={projectId}
-                  target={state.overview.displayTarget}
-                  hostname={state.overview.domain}
-                  scope={state.overview.scope}
-                  routeState={routeState}
-                  setSearchParams={state.setSearchParams}
-                  onSortClick={state.handleSortColumnClick}
-                  onPageChange={state.goToPage}
-                  onPageSizeChange={state.setPageSize}
-                />
-              )}
-            </div>
+                {routeState.tab === "keywords" ? (
+                  <KeywordsTab
+                    key="keywords"
+                    projectId={projectId}
+                    target={state.overview.displayTarget}
+                    hostname={state.overview.domain}
+                    scope={state.overview.scope}
+                    routeState={routeState}
+                    canSaveKeywords={state.canSaveKeywords}
+                    setSearchParams={state.setSearchParams}
+                    onSortClick={state.handleSortColumnClick}
+                    onPageChange={state.goToPage}
+                    onPageSizeChange={state.setPageSize}
+                  />
+                ) : (
+                  <PagesTab
+                    key="pages"
+                    projectId={projectId}
+                    target={state.overview.displayTarget}
+                    hostname={state.overview.domain}
+                    scope={state.overview.scope}
+                    routeState={routeState}
+                    setSearchParams={state.setSearchParams}
+                    onSortClick={state.handleSortColumnClick}
+                    onPageChange={state.goToPage}
+                    onPageSizeChange={state.setPageSize}
+                  />
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

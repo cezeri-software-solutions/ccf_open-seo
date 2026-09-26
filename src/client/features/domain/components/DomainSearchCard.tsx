@@ -1,10 +1,11 @@
-import type { FormEvent } from "react";
+import { useMemo, type FormEvent } from "react";
 import { AlertCircle, Search } from "lucide-react";
 import { getFieldError, getFormError } from "@/client/lib/forms";
 import type { DomainOverviewControlsForm } from "@/client/features/domain/DomainOverviewPage";
 import { toSortMode } from "@/client/features/domain/utils";
 import type { DomainSortMode } from "@/client/features/domain/types";
 import { LABS_LOCATION_OPTIONS } from "@/client/features/keywords/locations";
+import { WORLDWIDE_LOCATION_CODE } from "@/types/schemas/domain";
 import { LocationSelect } from "@/client/components/LocationSelect";
 import { ResearchScopeSelect } from "@/client/components/ResearchScopeSelect";
 import type { ResearchScope } from "@/shared/researchScope";
@@ -28,6 +29,19 @@ export function DomainSearchCard({
   onSortChange,
   onLocationChange,
 }: Props) {
+  const locationOptions = useMemo(
+    () => [
+      {
+        code: WORLDWIDE_LOCATION_CODE,
+        label: "Worldwide",
+        shortLabel: "WW",
+        languageCode: "en",
+      },
+      ...LABS_LOCATION_OPTIONS,
+    ],
+    [],
+  );
+
   return (
     <div className="card bg-base-100 border border-base-300">
       <div className="card-body gap-4">
@@ -79,7 +93,7 @@ export function DomainSearchCard({
             {(field) => (
               <LocationSelect
                 value={field.state.value}
-                options={LABS_LOCATION_OPTIONS}
+                options={locationOptions}
                 className="w-full lg:w-44 lg:shrink-0"
                 onChange={(code) => {
                   field.handleChange(code);

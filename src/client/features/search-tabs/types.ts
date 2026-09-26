@@ -15,6 +15,7 @@ export type DomainSearchTabInput = {
   domain: string;
   scope: ResearchScope;
   locationCode?: number;
+  worldwide?: boolean;
 };
 
 export type KeywordSearchTabInput = {
